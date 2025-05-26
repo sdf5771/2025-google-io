@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summarizer API</title>
+    <style>
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        section {
+            display: flex;
+            flex-direction: column;
+            width: 600px;
+            margin: 20px auto 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        .status-container{
+            margin-bottom: 10px;
+        }
+        .status-container > span{
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .status-container > span.error{
+            color: #ff0000;
+        }
+        .status-container > span.success{
+            color: #007bff;
+        }
+        .input-container > textarea{
+            width: calc(100% - 20px);
+            height: 100px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: transparent;
+            resize: none;
+        }
+        .input-container > textarea:focus{
+            outline: none;
+        }
+        .summarize-button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .summarize-button:disabled{
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .output-container > textarea{
+            width: calc(100% - 20px);
+            height: 300px;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            resize: none;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #f0f0f0;
+        }
+        .output-container > textarea:focus{
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Summarizer API</h1>
+        <span>2025 Google IO에서 소개된 Chrome의 내장 Summarizer API를 테스트합니다.</span>
+        <span>해당 API는 모델을 클라이언트에 다운로드한 후 실시간으로 텍스트를 요약합니다.</span>
+    </header>
+    <section>
+        <!-- <div class="container"> -->
+            <div class="status-container">
+                <span id="statusText"></span>
+            </div>
+            <div class="input-container">
+                <textarea id="textInput" placeholder="Enter text to summarize"></textarea>
+                <button id="summarizeBtn" class="summarize-button">Summarize</button>
+            </div>
+            <div class="output-container">
+                <textarea id="outputText" placeholder="Summary" readonly></textarea>
+            </div>
+        <!-- </div> -->
+    </section>
+    <script>
+        async function main(){
+            let isSummarizerSupported = false;
+            const statusText = document.querySelector('#statusText');
+            const textInput = document.querySelector('#textInput');
+            const summarizeBtn = document.querySelector('#summarizeBtn');
+            const outputText = document.querySelector('#outputText');
+
+            if('Summarizer' in self){
+                statusText.textContent = 'Summarizer API를 지원하는 브라우저입니다.';
+                isSummarizerSupported = true;
+            } else {
+                statusText.textContent = 'Summarizer API를 지원하지 않는 브라우저입니다.';
+                statusText.classList.add('error');
+                summarizeBtn.disabled = true;
+
+                const infoElement = document.createElement('div');
+                infoElement.innerHTML = `
+                    <p style="color: red;">Chrome의 Summarizer API를 사용하려면:</p>
+                    <ol>
+                        <li>Chrome 123 이상 버전을 사용하세요.</li>
+                        <li>chrome://flags/#summarization-api-for-gemini-nano 플래그를 활성화하세요.</li>
+                        <li>브라우저를 재시작하세요.</li>
+                    </ol>
+                `;
+                statusText.appendChild(infoElement);
+            }
+
+            summarizeBtn.addEventListener('click', async () => {
+                if(!isSummarizerSupported){
+                    return;
+                }
+                const text = textInput.value;
+                if(!text){
+                    statusText.textContent = '요약할 텍스트를 입력하세요.';
+                    statusText.classList.add('error');
+                    return;
+                }
+
+                try {
+                    const availability = await Summarizer.availability();
+                    let summarizer;
+
+                    if(availability === 'unavailable'){
+                        statusText.textContent = 'Summarizer API를 사용할 수 없습니다.';
+                        statusText.classList.add('error');
+                        return;
+                    }
+
+                    summarizeBtn.disabled = true;
+                    summarizeBtn.textContent = '요약 중...';
+
+                    summarizer = await Summarizer.create({
+                    type: 'key-points',
+                    format: 'markdown',
+                    length: 'medium',
+                    monitor: (m) => {
+                        m.addEventListener('downloadprogress', (event) => {
+                            statusText.textContent = `요약 모델 다운로드 중... ${event.loaded * 100}%`;
+                        });
+                    }
+                    });
+
+                    summarizeBtn.disabled = false;
+                    summarizeBtn.textContent = 'Summarize';
+
+                    const summary = await summarizer.summarize(text);
+                    outputText.value = summary;
+                    statusText.textContent = '요약이 완료되었습니다.';
+                    statusText.classList.add('success');
+                    
+                } catch (error) {
+                    console.error('error ', error);
+                    statusText.textContent = '요약 중 오류가 발생했습니다.';
+                    statusText.classList.add('error');
+                }
+            })
+        }
+        main();
+    </script>
+</body>
+</html>
