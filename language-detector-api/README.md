@@ -1,5 +1,6 @@
 # Language Detector API 데모
 
+![스크린샷 2025-05-26 오전 11 53 15](https://github.com/user-attachments/assets/5225382e-ced6-462a-8c04-0654889a0851)
 
 이 프로젝트는 2025 Google I/O에서 소개된 Chrome의 내장 Language Detector API를 시연하는 간단한 웹 애플리케이션입니다. 사용자가 텍스트를 입력하면 브라우저에 내장된 모델을 사용하여 클라이언트 측에서 언어를 감지합니다.
 
@@ -18,6 +19,8 @@
 4. 감지된 언어와 신뢰도가 결과 영역에 표시됩니다.
 
 ## 요구 사항
+
+![스크린샷 2025-05-26 오전 11 30 35](https://github.com/user-attachments/assets/af14225c-32e3-41f0-98d9-d2c17caddeed)
 
 - Chrome 123 이상 버전
 - Language Detection API 플래그 활성화 필요:
