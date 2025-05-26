@@ -1,9 +1,8 @@
 # Summarizer API 데모
+![스크린샷 2025-05-26 오후 3 35 05](https://github.com/user-attachments/assets/f13726ea-3905-42b9-9a94-55edc65754da)
 
-
-## 개요
-
-이 프로젝트는 2025 Google I/O에서 소개된 Chrome의 내장 Summarizer API를 시연하는 간단한 웹 애플리케이션입니다. 사용자가 텍스트를 입력하면 브라우저에 내장된 AI 모델을 사용하여 클라이언트 측에서 텍스트를 요약합니다.
+이 프로젝트는 2025 Google I/O에서 소개된 Chrome의 내장 Summarizer API를 시연하는 간단한 웹 애플리케이션입니다. 
+사용자가 텍스트를 입력하면 브라우저에 내장된 AI 모델을 사용하여 클라이언트 측에서 텍스트를 요약합니다.
 
 ## 특징
 
@@ -21,6 +20,7 @@
 4. 입력된 텍스트의 요약 결과가 하단 영역에 표시됩니다.
 
 ## 요구 사항
+![스크린샷 2025-05-26 오후 1 13 59](https://github.com/user-attachments/assets/c6315185-68c0-4a05-8318-7d69059b1427)
 
 - Chrome 123 이상 버전
 - Summarizer API 플래그 활성화 필요:
