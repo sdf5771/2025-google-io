@@ -13,3 +13,5 @@ A collection of sample projects experimenting with and implementing the latest t
 
 
 [summarizer-api](./summarizer-api/) - 2025 Google I/O에서 소개된 Chrome의 내장 Summarizer API를 시연하는 간단한 웹 애플리케이션입니다.
+
+![화면 기록 2025-05-27 오후 2 27 15](https://github.com/user-attachments/assets/44138314-06e1-4cb9-bcb5-9e4942a07331)
