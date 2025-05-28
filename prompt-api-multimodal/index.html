@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=\, initial-scale=1.0">
+    <title>Prompt API Multimodal</title>
+    <style>
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        section {
+            display: flex;
+            flex-direction: column;
+            width: 600px;
+            margin: 20px auto 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        .status-container{
+            margin-bottom: 10px;
+        }
+        .status-container > span{
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .status-container > span.error{
+            color: #ff0000;
+        }
+        .status-container > span.success{
+            color: #007bff;
+        }
+        .input-container > textarea{
+            width: calc(100% - 20px);
+            height: 100px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: transparent;
+            resize: none;
+        }
+        .input-container > textarea:focus{
+            outline: none;
+        }
+        .detect-button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .detect-button:disabled{
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .output-container > textarea{
+            width: calc(100% - 20px);
+            min-height: 100px;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            resize: none;
+            padding: 10px;
+            font-size: 16px;
+            background-color: transparent;
+        }
+        .output-container > textarea:focus{
+            outline: none;
+        }
+        .preview-image-container{
+            display: none;
+        }
+        .preview-image-container.active{
+            display: block;
+        }
+        .preview-audio-container{
+            display: none;
+        }
+        .preview-audio-container.active{
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Prompt API Multimodal</h1>
+        <span>2025 Google IO에서 소개된 Chrome의 내장 Prompt API중 Multimodal 기능을 테스트합니다.</span><br>
+        <span>해당 API는 모델을 클라이언트에 다운로드한 후 실시간으로 텍스트를 생성합니다.</span>
+    </header>
+    <section>
+        <div class="container">
+            <div class="status-container">
+                <span id="statusText"></span>
+            </div>
+            <div class="preview-container">
+                <div class="preview-image-container">
+                    <span style="font-size: 16px; margin-bottom: 10px;">Preview Image</span><br>
+                    <img id="previewImage" alt="Preview Image" style="width: 100%;">
+                </div>
+                <div class="preview-audio-container">
+                    <span style="font-size: 16px; margin-bottom: 10px;">Preview Audio</span><br>
+                    <audio id="previewAudio" controls></audio>
+                </div>
+            </div>
+            <div class="input-container">
+                <textarea id="textInput" placeholder="Enter text to generate"></textarea>
+                <div class="file-input-container">
+                    <input type="file" id="fileInput" accept="image/*, audio/*">
+                </div>
+                <button id="generateBtn" class="generate-button">Generate</button>
+            </div>
+            <div class="output-container">
+                <textarea id="outputText" placeholder="Output Text" readonly></textarea>
+            </div>
+        </div>
+    </section>
+    <script>
+        async function main(){
+            let isPromptSupported = false;
+            let selectedFile = null;
+            const fileInput = document.getElementById('fileInput');
+            const generateBtn = document.getElementById('generateBtn');
+            const textInput = document.getElementById('textInput');
+            const outputText = document.getElementById('outputText');
+            const statusText = document.getElementById('statusText');
+            const previewImageContainer = document.querySelector('.preview-image-container');
+            const previewAudioContainer = document.querySelector('.preview-audio-container');
+            const previewImage = previewImageContainer.querySelector('#previewImage');
+            const previewAudio = previewAudioContainer.querySelector('#previewAudio');
+
+            // 브라우저가 Prompt API를 지원하는지 확인
+            if('LanguageModel' in self) {
+                statusText.textContent = 'Prompt API를 지원하는 브라우저입니다.';
+                isPromptSupported = true;
+            } else {
+                statusText.textContent = 'Prompt API를 지원하지 않는 브라우저입니다.';
+                statusText.classList.add('error');
+                generateBtn.disabled = true;
+                // Translator API가 지원되지 않는 경우
+                statusElement.textContent = 'Prompt API가 지원되지 않습니다. Chrome 123 이상 버전이 필요합니다.';
+                translateBtn.disabled = true;
+                
+                // 추가 안내 메시지
+                const infoElement = document.createElement('div');
+                infoElement.innerHTML = `
+                    <p style="color: red;">Chrome의 Prompt API를 사용하려면:</p>
+                    <ol>
+                        <li>Chrome 123 이상 버전을 사용하세요.</li>
+                        <li>chrome://flags/#prompt-api-for-gemini-nano 플래그를 활성화하세요.</li>
+                        <li>브라우저를 재시작하세요.</li>
+                    </ol>
+                `;
+                document.querySelector('.container').appendChild(infoElement);
+                return;
+            }
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                selectedFile = file;
+                if(file){
+                    const reader = new FileReader();
+
+                    previewImageContainer.classList.remove('active');
+                    previewAudioContainer.classList.remove('active');
+
+                    if(file.type.startsWith('image/')){
+                        reader.onload = (e) => {
+                            previewImage.src = e.target.result;
+                            previewImageContainer.classList.add('active');
+                        }
+                        reader.readAsDataURL(file);
+                    } else if(file.type.startsWith('audio/')){
+                        reader.onload = (e) => {
+                            previewAudio.src = e.target.result;
+                            previewAudioContainer.classList.add('active');
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                }
+            })
+
+            generateBtn.addEventListener('click', async () => {
+                if(!isPromptSupported) {
+                    return;
+                }
+
+                const text = textInput.value;
+                outputText.style.height = '100px';
+                
+                if(text.trim() === ''){
+                    statusText.textContent = '요구사항을 입력해주세요.';
+                    statusText.classList.add('error');
+                    generateBtn.disabled = true;
+                    return;
+                }
+                
+                try {
+                    let resultText = '';
+                    
+                    if(selectedFile){
+                        // multimodal 기능을 사용하기 위해 모델 다운로드 필요
+                        const expectedInputs = [
+                        ];
+                        const contentOptions = [
+                            { type: "text", value: text },
+                        ];
+
+                        if(selectedFile.type.startsWith('image/')){
+                            const imageFileBlob = await (await fetch(previewImage.src)).blob()
+                            contentOptions.push({ type: "image", value: imageFileBlob });
+                            expectedInputs.push({ type: "image" });
+                        } else if(selectedFile.type.startsWith('audio/')){
+                            const audioFileBlob = await (await fetch(previewAudio.src)).blob()
+                            contentOptions.push({ type: "audio", value: audioFileBlob });
+                            expectedInputs.push({ type: "audio" });
+                        }
+                        const availability = await LanguageModel.availability({
+                            expectedInputs: expectedInputs
+                        });
+                        
+                        if(availability === 'no'){
+                            statusText.textContent = '브라우저에서 Prompt API를 지원하지만 현재 사용할 수 없습니다. 모델을 다운로드할 수 있는 디스크 공간이 충분한지 확인해주세요.';
+                            statusText.classList.add('error');
+                            generateBtn.disabled = true;
+                            return;
+                        } 
+
+                        if(availability === 'unavailable'){
+                            statusText.textContent = '브라우저에서 Prompt API를 지원하지만 현재 멀티 모달 기능은 Chrome 138 Canary 에서만 사용할 수 있습니다. 브라우저 버전을 확인해주세요.';
+                            statusText.classList.add('error');
+                            generateBtn.disabled = true;
+                            return;
+                        }
+                        
+                        statusText.textContent = '브라우저가 Prompt API를 지원합니다. 모델을 다운로드 후 요구사항을 처리하겠습니다.';
+                        const session = await LanguageModel.create({
+                            expectedInputs: expectedInputs,
+                            monitor(m){
+                                m.addEventListener('downloadprogress', (event) => {
+                                    console.log('event ', event);
+                                    statusText.textContent = `요구사항 처리 중... ${event.loaded * 100}% of ${event.total}bytes.`;
+                                })
+                            }
+                        });
+                        console.log('session ', session);
+
+                        const result = await session.promptStreaming([
+                            {
+                                role: "user",
+                                content: contentOptions
+                            }
+                        ]);
+                        for await (const chunk of result){
+                            resultText += chunk;
+                            outputText.value = resultText;
+                        }
+                    } else {
+                        // text 기능만 사용
+                        const availability = await LanguageModel.availability();
+                        console.log('availability ', availability);
+                        if(availability === 'no'){
+                            statusText.textContent = '브라우저에서 Prompt API를 지원하지만 현재 사용할 수 없습니다. 모델을 다운로드할 수 있는 디스크 공간이 충분한지 확인해주세요.';
+                            statusText.classList.add('error');
+                            generateBtn.disabled = true;
+                            return;
+                        } 
+                        
+                        statusText.textContent = '브라우저가 Prompt API를 지원합니다. 모델을 다운로드 후 요구사항을 처리하겠습니다.';
+                        const session = await LanguageModel.create({
+                            monitor(m){
+                                m.addEventListener('downloadprogress', (event) => {
+                                    console.log('event ', event);
+                                    statusText.textContent = `요구사항 처리 중... ${event.loaded * 100}% of ${event.total}bytes.`;
+                                })
+                            }
+                        });
+
+                        const result = await session.promptStreaming(text);
+                        for await (const chunk of result){
+                            resultText += chunk;
+                            outputText.value = resultText;
+                        }
+                    }
+                    outputText.style.height = outputText.scrollHeight + 'px';
+                    statusText.textContent = '요구사항을 처리했습니다.';
+                    statusText.classList.add('success');
+                    generateBtn.disabled = false;
+                } catch (error) {
+                    console.error('error ', error);
+                    statusText.textContent = '요구사항을 처리하는 중 오류가 발생했습니다.';
+                    statusText.classList.add('error');
+                    generateBtn.disabled = false;
+                    return;
+                }
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
