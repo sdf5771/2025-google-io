@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=\, initial-scale=1.0">
+    <title>Prompt Streaming API</title>
+    <style>
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        section {
+            display: flex;
+            flex-direction: column;
+            width: 600px;
+            margin: 20px auto 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        .status-container{
+            margin-bottom: 10px;
+        }
+        .status-container > span{
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .status-container > span.error{
+            color: #ff0000;
+        }
+        .status-container > span.success{
+            color: #007bff;
+        }
+        .input-container > textarea{
+            width: calc(100% - 20px);
+            height: 100px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: transparent;
+            resize: none;
+        }
+        .input-container > textarea:focus{
+            outline: none;
+        }
+        .detect-button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .detect-button:disabled{
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .output-container > textarea{
+            width: calc(100% - 20px);
+            min-height: 100px;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            resize: none;
+            padding: 10px;
+            font-size: 16px;
+            background-color: transparent;
+        }
+        .output-container > textarea:focus{
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Prompt API</h1>
+        <span>2025 Google IO에서 소개된 Chrome의 내장 Prompt API중 promptStreaming 기능을 테스트합니다.</span><br>
+        <span>해당 API는 모델을 클라이언트에 다운로드한 후 실시간으로 텍스트를 생성합니다.</span>
+    </header>
+    <section>
+        <div class="container">
+            <div class="status-container">
+                <span id="statusText"></span>
+            </div>
+            <div class="input-container">
+                <textarea id="textInput" placeholder="Enter text to generate"></textarea>
+                <button id="generateBtn" class="generate-button">Generate</button>
+            </div>
+            <div class="output-container">
+                <textarea id="outputText" placeholder="Detected Language" readonly></textarea>
+            </div>
+        </div>
+    </section>
+    <script>
+        async function main(){
+            let isPromptSupported = false;
+            const generateBtn = document.getElementById('generateBtn');
+            const textInput = document.getElementById('textInput');
+            const outputText = document.getElementById('outputText');
+            const statusText = document.getElementById('statusText');
+
+            // 브라우저가 Prompt API를 지원하는지 확인
+            if('LanguageModel' in self) {
+                statusText.textContent = 'Prompt API를 지원하는 브라우저입니다.';
+                isPromptSupported = true;
+            } else {
+                statusText.textContent = 'Prompt API를 지원하지 않는 브라우저입니다.';
+                statusText.classList.add('error');
+                generateBtn.disabled = true;
+                // Translator API가 지원되지 않는 경우
+                statusElement.textContent = 'Prompt API가 지원되지 않습니다. Chrome 123 이상 버전이 필요합니다.';
+                translateBtn.disabled = true;
+                
+                // 추가 안내 메시지
+                const infoElement = document.createElement('div');
+                infoElement.innerHTML = `
+                    <p style="color: red;">Chrome의 Prompt API를 사용하려면:</p>
+                    <ol>
+                        <li>Chrome 123 이상 버전을 사용하세요.</li>
+                        <li>chrome://flags/#prompt-api-for-gemini-nano 플래그를 활성화하세요.</li>
+                        <li>브라우저를 재시작하세요.</li>
+                    </ol>
+                `;
+                document.querySelector('.container').appendChild(infoElement);
+                return;
+            }
+
+            generateBtn.addEventListener('click', async () => {
+                if(!isPromptSupported) {
+                    return;
+                }
+
+                const text = textInput.value;
+                outputText.style.height = '100px';
+                
+                if(text.trim() === ''){
+                    statusText.textContent = '요구사항을 입력해주세요.';
+                    statusText.classList.add('error');
+                    generateBtn.disabled = true;
+                    return;
+                }
+                
+                try {
+                    let resultText = '';
+                    const availability = await LanguageModel.availability();
+                    if(availability === 'no'){
+                        statusText.textContent = '브라우저에서 Prompt API를 지원하지만 현재 사용할 수 없습니다. 모델을 다운로드할 수 있는 디스크 공간이 충분한지 확인해주세요.';
+                        statusText.classList.add('error');
+                        generateBtn.disabled = true;
+                        return;
+                    } 
+                    
+                    statusText.textContent = '브라우저가 Prompt API를 지원합니다. 모델을 다운로드 후 요구사항을 처리하겠습니다.';
+                    const session = await LanguageModel.create({
+                        monitor(m){
+                            m.addEventListener('downloadprogress', (event) => {
+                                console.log('event ', event);
+                                statusText.textContent = `요구사항 처리 중... ${event.loaded * 100}% of ${event.total}bytes.`;
+                            })
+                        }
+                    });
+
+                    const result = await session.promptStreaming(text);
+                    for await (const chunk of result){
+                        resultText += chunk;
+                        outputText.value = resultText;
+                    }
+                    outputText.style.height = outputText.scrollHeight + 'px';
+                    statusText.textContent = '요구사항을 처리했습니다.';
+                    statusText.classList.add('success');
+                    generateBtn.disabled = false;
+                } catch (error) {
+                    console.error('error ', error);
+                    statusText.textContent = '요구사항을 처리하는 중 오류가 발생했습니다.';
+                    statusText.classList.add('error');
+                    generateBtn.disabled = false;
+                    return;
+                }
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
