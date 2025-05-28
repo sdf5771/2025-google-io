@@ -1,5 +1,7 @@
 # Prompt API 데모
 
+![스크린샷 2025-05-28 오후 1 39 09](https://github.com/user-attachments/assets/da586bc7-dbc6-45b9-8c77-384ba41e5e61)
+
 
 ## 개요
 
